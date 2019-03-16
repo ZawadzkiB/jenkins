@@ -1,0 +1,36 @@
+pipeline {
+    agent any
+    tools {
+        maven 'maven3'
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'mvn -f spring-mvc-forms-thymeleaf/pom.xml clean install'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh 'BUILD_ID=dontKillMe\n' +
+                        '\n' +
+                        'if [ $(pidof apka) ]\n' +
+                        'then\n' +
+                        'kill $(pidof apka)\n' +
+                        'fi\n' +
+                        '\n' +
+                        'bash -c "exec -a apka java -jar spring-mvc-forms-thymeleaf/target/spring-mvc-forms-thymeleaf-1.jar" &'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'mvn -f apptests/pom.xml clean test'
+            }
+        }
+    }
+    post {
+        always {
+            archiveArtifacts artifacts: 'spring-mvc-forms-thymeleaf/target/*.jar', fingerprint: true
+            junit 'apptests/target/surefire-reports/*.xml'
+        }
+    }
+}
